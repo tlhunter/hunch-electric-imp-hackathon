@@ -1,0 +1,157 @@
+<html>
+<head>
+<title>Hunch: Audible Notification Taxonomy</title>
+<script src="https://code.jquery.com/jquery-2.1.1.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/underscore.js/1.6.0/underscore-min.js"></script>
+<script src="https://cdn.pubnub.com/pubnub.min.js"></script>
+<script>
+$(function() {
+	// This is all horrible quick hackathon code
+	$('.taxonomy').on('click', 'button', function() {
+		$el = $(this);
+		var target = $el.data('target');
+		var type = $el.parents('fieldset').data('type');
+		$.get('proxy.php?type=' + type + '&target=' + target, function(result) {
+			$('#result').show().text(result).delay(2000).fadeOut('slow');
+		});
+	});
+
+	$('#random').click(function() {
+		var $buttons = $('.taxonomy button').removeClass('random');
+		var count = $buttons.length;
+		var $button = $($buttons[Math.floor(Math.random() * count)]);
+		$button.addClass('random');
+		$button.click().focus();
+	});
+
+	$('body').on('keydown', function(event) {
+		if (event.keyCode === 82) {
+			$('#random').click();
+		}
+	});
+});
+
+// just for fun...
+var clients = {};
+(function(){
+
+	var client_id = PUBNUB.uuid();
+
+	var pubnub = PUBNUB.init({
+		publish_key   : 'demo',
+		subscribe_key : 'demo',
+		ssl: true
+	});
+
+	var transmitter = _.throttle(function(event) {
+		pubnub.publish({
+			channel: "lobby",
+			message: {
+				client: client_id,
+				x: event.clientX,
+				y: event.clientY,
+			}
+		});
+	}, 100);
+
+	pubnub.subscribe({
+		channel : "lobby",
+		message : function(data) {
+			if (data.client === client_id) { return; }
+
+			if (!clients[data.client]) {
+				$('body').append('<div id="' + data.client + '" class="cursor"></div>');
+			}
+
+			clients[data.client] = data;
+
+			$('#'+data.client).offset({
+				left: data.x,
+				top: data.y
+			});
+		},
+		connect : function() {
+			$('body').mousemove(function(event) {
+				transmitter(event);
+			});
+		}
+	});
+
+})();
+</script>
+<style>
+#result {
+	color: purple;
+}
+
+body {
+	background: #e6e7e9 url("r2d2.jpg") top right no-repeat;
+}
+
+fieldset {
+	max-width: 50%;
+}
+
+.random {
+	background-color: black;
+	color: white;
+}
+
+.cursor {
+	position: absolute;
+	width: 32px;
+	height: 32px;
+	background: transparent url("cursor.png") no-repeat;
+}
+</style>
+</head>
+<body>
+<h1>Hunch: Audible Notification Taxonomy (<a href="http://bit.ly/AudTax">bit.ly/AudTax</a>)</h1>
+
+<div class="taxonomy">
+	<fieldset data-type="phone">
+		<legend>New Phone Call from:</legend>
+		<button data-target="mother">Mother</button>
+		<button data-target="girlfriend">Girlfriend</button>
+		<button data-target="daughter">Daughter</button>
+		<button data-target="brother">Brother</button>
+		<button data-target="sister">Sister</button>
+		<button data-target="father">Father</button>
+		<button data-target="friend">Friend Steve</button>
+	</fieldset>
+
+	<fieldset data-type="text">
+		<legend>New Text Message from:</legend>
+		<button data-target="mother">Mother</button>
+		<button data-target="girlfriend">Girlfriend</button>
+		<button data-target="daughter">Daughter</button>
+		<button data-target="brother">Brother</button>
+		<button data-target="sister">Sister</button>
+		<button data-target="father">Father</button>
+		<button data-target="friend">Friend Steve</button>
+	</fieldset>
+
+	<fieldset data-type="email">
+		<legend>New Email from:</legend>
+		<button data-target="mother">Mother</button>
+		<button data-target="girlfriend">Girlfriend</button>
+		<button data-target="daughter">Daughter</button>
+		<button data-target="brother">Brother</button>
+		<button data-target="sister">Sister</button>
+		<button data-target="father">Father</button>
+		<button data-target="friend">Friend Steve</button>
+	</fieldset>
+</div>
+
+<div><button id="random">RANDOM</button> (Look Away And Guess!)<br />
+Press (R) to trigger a random notification and (Enter) to replay it.</div>
+
+<pre>NOTIFY_TYPE &gt; RELATIONSHIP &gt; SOCIAL_DIFF &gt; GENDER</pre>
+<p>So, if grandma calls you, it might trigger:</p>
+<pre>PHONE &gt; FAMILY &gt; HIGHER &gt; FEMALE</pre>
+<p>The average person can remember <a href="http://en.wikipedia.org/wiki/The_Magical_Number_Seven,_Plus_or_Minus_Two">Seven</a> bits of information.
+A normal phone notiifcation normally conveys just one piece of information.</p>
+
+<div id="result"></div>
+</body>
+</html>
